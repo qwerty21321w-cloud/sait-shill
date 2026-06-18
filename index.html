@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Чат — Банк Данных</title>
+  <title>Чат</title>
   <style>
     :root{--bg:#0b0f14;--panel:#0f1720;--accent:#00d28a;--muted:#98a0ab;--bubble:#11161b;--mine:#063;--their:#1b2330}
     *{box-sizing:border-box}
@@ -35,12 +35,25 @@
 
     .small{font-size:12px;color:var(--muted)}
     .message-file{margin-top:8px;display:block;max-width:220px;border-radius:6px}
+    .delete-btn{background:transparent;border:0;color:#ff7b7b;cursor:pointer;font-size:12px;margin-left:8px}
+    .device-item{padding:8px;margin:4px 0;background:rgba(0,210,138,0.1);border-left:2px solid var(--accent);cursor:pointer;border-radius:4px;font-size:12px}
+    .device-item:hover{background:rgba(0,210,138,0.2)}
+    .device-item.active{background:rgba(0,210,138,0.3);font-weight:600}
+
+    @media (max-width: 700px){
+      .sidebar{display:none}
+      .main{padding:8px}
+      .bubble{max-width:92%;font-size:15px;padding:12px}
+      .topbar{padding:0 10px}
+      .composer{padding:10px}
+      .message-file{max-width:100%}
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <div class="topbar">
-      <div class="brand">Банк Данных — Чат</div>
+      <div class="brand">Чат</div>
       <div class="status" id="statusIndicator">[ ПОДКЛЮЧЕНИЕ... ]</div>
     </div>
 
@@ -48,7 +61,6 @@
       <div class="sidebar">
         <div class="search"><input id="searchConv" placeholder="Поиск..."/></div>
         <div class="conversations" id="conversations"></div>
-        <div class="small">Открыть репозиторий: GitHub Pages</div>
       </div>
 
       <div style="flex:1;display:flex;flex-direction:column">
@@ -96,6 +108,7 @@
     const statusIndicator = document.getElementById('statusIndicator');
 
     let currentUserId = null;
+    let selectedDevice = null;
 
     function updateStatus(connected){
       statusIndicator.textContent = connected? '[ ✓ ОНЛАЙН ]' : '[ ✗ ОФЛАЙН ]';
@@ -105,21 +118,27 @@
 
     function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]) }
 
-    function renderMessage(msg){
+    function renderMessage(msg, id){
       const el = document.createElement('div');
       const mine = msg.userId===currentUserId;
       el.className = 'bubble '+(mine? 'mine':'their');
       // support old schema: 'content' or new 'text'
       const text = msg.content || msg.text || '';
-      el.innerHTML = `<div>${escapeHtml(text)}</div>`;
+      let inner = `<div>${escapeHtml(text)}</div>`;
       if(msg.fileUrl){
         if(/\.(jpe?g|png|gif|webp)$/i.test(msg.fileName||'')){
-          el.innerHTML += `<img src="${msg.fileUrl}" class="message-file"/>`;
+          inner += `<img src="${msg.fileUrl}" class="message-file"/>`;
         } else {
-          el.innerHTML += `<a href="${msg.fileUrl}" target="_blank" class="small">📥 ${escapeHtml(msg.fileName||'Файл')}</a>`;
+          inner += `<a href="${msg.fileUrl}" target="_blank" class="small">📥 ${escapeHtml(msg.fileName||'Файл')}</a>`;
         }
       }
-      el.innerHTML += `<div class="meta">${escapeHtml(msg.device||'')} • ${formatDate(msg.timestamp)}</div>`;
+      // add delete button for own messages
+      if(mine && id){
+        inner += `<div style="display:flex;align-items:center;justify-content:space-between"><div class=\"meta\">${escapeHtml(msg.device||'')} • ${formatDate(msg.timestamp)}</div><button class=\"delete-btn\" onclick=\"deleteMessage('${id}')\" title=\"Удалить сообщение\">✖</button></div>`;
+      } else {
+        inner += `<div class="meta">${escapeHtml(msg.device||'')} • ${formatDate(msg.timestamp)}</div>`;
+      }
+      el.innerHTML = inner;
       messagesDiv.appendChild(el);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
@@ -127,8 +146,16 @@
     function listenMessages(){
       // listen to old/shared path so rules stay compatible with previous setup
       db.ref('notes_shared').orderByChild('timestamp').limitToLast(200).on('value', snap=>{
+        const messages = [];
+        snap.forEach(ch=>{ messages.push(ch); });
+        
+        // collect and render device list
+        const devices = collectDevices(messages);
+        renderDevices(devices);
+        
+        // filter and render messages
         messagesDiv.innerHTML='';
-        snap.forEach(ch=>{
+        messages.forEach(ch=>{
           const v = ch.val();
           // normalize to message shape
           const msg = {
@@ -139,10 +166,44 @@
             timestamp: v.timestamp || Date.now(),
             userId: v.userId || v.uid || v.author || ''
           };
-          renderMessage(msg);
+          // filter by selected device if set
+          if(selectedDevice && !msg.device.includes(selectedDevice.substring(0, 30))) return;
+          renderMessage(msg, ch.key);
         });
         updateStatus(true);
       }, err=>{ console.error(err); updateStatus(false); });
+    }
+
+    function deleteMessage(id){
+      if(!confirm('Удалить сообщение?')) return;
+      db.ref(`notes_shared/${id}`).remove()
+        .then(()=>{ console.log('message removed'); })
+        .catch(err=>{ console.error(err); alert('Ошибка удаления: '+err.message); });
+    }
+
+    function collectDevices(messages){
+      const devices = new Map();
+      messages.forEach(ch=>{
+        const v = ch.val();
+        const device = (v.device || v.userAgent || 'Unknown').substring(0, 50);
+        if(!devices.has(device)){
+          devices.set(device, { device, count: 0 });
+        }
+        devices.get(device).count++;
+      });
+      return Array.from(devices.values()).sort((a,b)=>b.count-a.count);
+    }
+
+    function renderDevices(devices){
+      const convDiv = document.getElementById('conversations');
+      convDiv.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600">📱 УСТРОЙСТВА:</div>';
+      devices.forEach(d=>{
+        const el = document.createElement('div');
+        el.className = 'device-item'+(selectedDevice===d.device?' active':'');
+        el.textContent = `${d.device} (${d.count})`;
+        el.onclick = ()=>{ selectedDevice = selectedDevice===d.device ? null : d.device; listenMessages(); };
+        convDiv.appendChild(el);
+      });
     }
 
     function uploadFile(file){
