@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Банк Данных - Хакерский Терминал (Firebase)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Заголовок */
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            border: 2px solid #00ff00;
+            padding: 15px;
+            text-shadow: 0 0 10px #00ff00;
+            letter-spacing: 2px;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            font-size: 12px;
+        }
+
+        .status.connected {
+            background-color: #0a3a0a;
+        }
+
+        .status.disconnected {
+            background-color: #3a0a0a;
+        }
+
+        /* Панель добавления */
+        .add-panel {
+            border: 2px solid #00ff00;
+            padding: 20px;
+            margin-bottom: 30px;
+            background-color: #0a0a0a;
+        }
+
+        .add-panel h2 {
+            margin-bottom: 15px;
+            font-size: 16px;
+            text-shadow: 0 0 5px #00ff00;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background-color: #001a00;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+
+        textarea:focus {
+            outline: none;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background-color: #001a00;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background-color: #00ff00;
+            color: #000000;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .device-info {
+            border-top: 1px solid #00ff00;
+            padding-top: 15px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .device-label {
+            color: #00ff00;
+            margin-bottom: 5px;
+        }
+
+        .device-value {
+            color: #00aa00;
+            word-break: break-all;
+            background-color: #001a00;
+            padding: 8px;
+            margin-top: 5px;
+        }
+
+        /* Feed список */
+        .feed {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        }
+
+        /* Карточка */
+        .card {
+            border: 2px solid #00ff00;
+            padding: 15px;
+            background-color: #0a0a0a;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            box-shadow: 0 0 15px #00ff00;
+            transform: translateY(-5px);
+        }
+
+        .card-content {
+            margin-bottom: 20px;
+            min-height: 60px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            background-color: #001a00;
+            padding: 10px;
+            border: 1px dashed #00ff00;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-size: 12px;
+            border-top: 1px solid #00ff00;
+            padding-top: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .card-info-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .device-icon {
+            display: inline-flex;
+            width: 20px;
+            height: 20px;
+            border: 1px solid #00ff00;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+
+        .card-date {
+            color: #00ff00;
+        }
+
+        .delete-btn {
+            background-color: #330000;
+            border-color: #ff0000;
+            color: #ff0000;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .delete-btn:hover {
+            background-color: #ff0000;
+            color: #000000;
+            box-shadow: 0 0 10px #ff0000;
+        }
+
+        /* Empty state */
+        .empty-message {
+            text-align: center;
+            padding: 40px;
+            color: #00aa00;
+            font-size: 16px;
+            border: 2px dashed #00ff00;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #00ff00;
+            font-size: 16px;
+        }
+
+        .error {
+            border: 2px solid #ff0000;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #2a0000;
+            color: #ff0000;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .feed {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            .card-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>[ БАНК ДАННЫХ v2.0 FIREBASE ]</h1>
+        
+        <div class="status" id="statusIndicator">
+            [ ПОДКЛЮЧЕНИЕ... ]
+        </div>
+
+        <div id="errorContainer"></div>
+
+        <div class="add-panel">
+            <h2>>>> НОВАЯ ЗАПИСЬ</h2>
+            <textarea id="noteInput" placeholder="Введите содержимое заметки..."></textarea>
+            <div class="button-container">
+                <button id="saveBtn">[ СОХРАНИТЬ В ОБЛАКО ]</button>
+                <button id="clearBtn">[ ОЧИСТИТЬ ]</button>
+                <button id="exportBtn">[ ЭКСПОРТ JSON ]</button>
+            </div>
+            <div class="device-info">
+                <div class="device-label">Текущее устройство:</div>
+                <div class="device-value" id="userAgent"></div>
+            </div>
+        </div>
+
+        <div class="feed" id="feed"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-database-compat.js"></script>
+
+    <script>
+        // ✅ КОНФИГУРАЦИЯ FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyCszNTU9feb83GToovE3HuHdW9dsn5lYlc",
+            authDomain: "sait-e0d07.firebaseapp.com",
+            databaseURL: "https://sait-e0d07-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "sait-e0d07",
+            storageBucket: "sait-e0d07.firebasestorage.app",
+            messagingSenderId: "166005592540",
+            appId: "1:166005592540:web:c3d4899cc22a6bf29e7f19"
+        };
+
+        // Инициализация Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        // Парсинг User-Agent
+        function parseUserAgent() {
+            const ua = navigator.userAgent;
+            
+            let device = 'OTHER';
+            let deviceIcon = '?';
+            
+            if (/Windows/.test(ua)) {
+                device = 'Windows';
+                deviceIcon = 'W';
+            } else if (/Mac/.test(ua) || /iPhone/.test(ua) || /iPad/.test(ua)) {
+                device = 'Apple';
+                deviceIcon = 'A';
+            } else if (/Android/.test(ua)) {
+                device = 'Android';
+                deviceIcon = 'A';
+            } else if (/Linux/.test(ua)) {
+                device = 'Linux';
+                deviceIcon = 'L';
+            }
+
+            let browser = 'Unknown';
+            
+            if (/Chrome/.test(ua) && !/Chromium/.test(ua) && !/Edg/.test(ua)) {
+                browser = 'Chrome';
+            } else if (/Safari/.test(ua) && !/Chrome/.test(ua)) {
+                browser = 'Safari';
+            } else if (/Firefox/.test(ua)) {
+                browser = 'Firefox';
+            } else if (/Edg/.test(ua)) {
+                browser = 'Edge';
+            } else if (/Opera|OPR/.test(ua)) {
+                browser = 'Opera';
+            }
+
+            return { device, deviceIcon, browser, userAgent: ua };
+        }
+
+        // Переменные
+        const noteInput = document.getElementById('noteInput');
+        const saveBtn = document.getElementById('saveBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const feed = document.getElementById('feed');
+        const userAgentDiv = document.getElementById('userAgent');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const errorContainer = document.getElementById('errorContainer');
+
+        const ua = parseUserAgent();
+        userAgentDiv.textContent = ua.userAgent;
+
+        let currentUserId = null;
+
+        // Обновление статуса подключения
+        function updateStatus(connected) {
+            if (connected) {
+                statusIndicator.className = 'status connected';
+                statusIndicator.textContent = '[ ✓ ОНЛАЙН - СИНХРОНИЗАЦИЯ АКТИВНА ]';
+            } else {
+                statusIndicator.className = 'status disconnected';
+                statusIndicator.textContent = '[ ✗ ОФЛАЙН - ДАННЫЕ НЕ СИНХРОНИЗИРУЮТСЯ ]';
+            }
+        }
+
+        // Показ ошибок
+        function showError(message) {
+            errorContainer.innerHTML = `<div class="error">[ ОШИБКА ]\n${message}</div>`;
+            setTimeout(() => {
+                errorContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        // Форматирование даты
+        function formatDate(timestamp) {
+            const d = new Date(timestamp);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            
+            return `${day}.${month}.${year}, ${hours}:${minutes}`;
+        }
+
+        // Экранирование HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Создание карточки
+        function createCard(noteId, noteData) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            const noteDate = formatDate(noteData.timestamp);
+            
+            card.innerHTML = `
+                <div class="card-content">${escapeHtml(noteData.content)}</div>
+                <div class="card-footer">
+                    <div class="card-info-left">
+                        <div class="device-icon" title="${noteData.device}">${noteData.deviceIcon}</div>
+                        <span>${noteData.browser}</span>
+                    </div>
+                    <div class="card-date">${noteDate}</div>
+                    <button class="delete-btn" onclick="deleteNote('${noteId}')">[ X ]</button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // Отрисовка всех карточек
+        function renderFeed(notes) {
+            feed.innerHTML = '';
+            
+            if (!notes || notes.length === 0) {
+                feed.innerHTML = '<div class="empty-message">[ БАЗА ДАННЫХ ПУСТА ]\n\nДобавьте первую запись чтобы начать...</div>';
+                return;
+            }
+
+            notes.forEach(note => {
+                feed.appendChild(createCard(note.id, note.data));
+            });
+        }
+
+        // Загрузка заметок из Realtime Database
+        function loadNotes() {
+            if (!currentUserId) {
+                feed.innerHTML = '<div class="loading">[ ИНИЦИАЛИЗАЦИЯ... ]</div>';
+                return;
+            }
+
+            feed.innerHTML = '<div class="loading">[ ЗАГРУЗКА ДАННЫХ ИЗ ОБЛАКА... ]</div>';
+
+            const notesRef = db.ref(`notes/${currentUserId}`).orderByChild('timestamp');
+            notesRef.on('value', (snapshot) => {
+                const notes = [];
+                snapshot.forEach((childSnapshot) => {
+                    notes.push({ id: childSnapshot.key, data: childSnapshot.val() });
+                });
+                notes.reverse();
+                renderFeed(notes);
+                updateStatus(true);
+            }, (error) => {
+                console.error('Ошибка загрузки:', error);
+                showError(`Ошибка загрузки данных: ${error.message}`);
+                updateStatus(false);
+            });
+        }
+
+        // Добавление новой заметки
+        function addNote() {
+            const content = noteInput.value.trim();
+            
+            if (content === '') {
+                showError('Пожалуйста, введите содержимое заметки!');
+                return;
+            }
+
+            if (!currentUserId) {
+                showError('Пользователь не загружен. Попробуйте перезагрузить страницу.');
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = '[ СОХРАНЕНИЕ... ]';
+
+            const newNote = {
+                content: content,
+                timestamp: Date.now(),
+                device: ua.device,
+                deviceIcon: ua.deviceIcon,
+                browser: ua.browser,
+                userAgent: ua.userAgent
+            };
+
+            db.ref(`notes/${currentUserId}`).push(newNote)
+                .then(() => {
+                    noteInput.value = '';
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
+                })
+                .catch((error) => {
+                    console.error('Ошибка сохранения:', error);
+                    showError(`Ошибка сохранения: ${error.message}`);
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
+                });
+        }
+
+        // Удаление заметки
+        window.deleteNote = function(noteId) {
+            if (confirm('[ ПОДТВЕРЖДЕНИЕ ]\n\nВы уверены, что хотите удалить эту запись?')) {
+                if (!currentUserId) return;
+
+                db.ref(`notes/${currentUserId}/${noteId}`).remove()
+                    .catch((error) => {
+                        showError(`Ошибка удаления: ${error.message}`);
+                    });
+            }
+        };
+
+        // Экспорт в JSON
+        function exportNotes() {
+            if (!currentUserId) {
+                showError('Пользователь не загружен.');
+                return;
+            }
+
+            db.ref(`notes/${currentUserId}`).once('value')
+                .then((snapshot) => {
+                    const notes = [];
+                    snapshot.forEach((childSnapshot) => {
+                        notes.push(childSnapshot.val());
+                    });
+
+                    const dataStr = JSON.stringify(notes, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `bankdannyh_export_${Date.now()}.json`;
+                    link.click();
+                    
+                    URL.revokeObjectURL(url);
+                })
+                .catch((error) => {
+                    showError(`Ошибка экспорта: ${error.message}`);
+                });
+        }
+
+        // Обработчики событий
+        saveBtn.addEventListener('click', addNote);
+        clearBtn.addEventListener('click', () => {
+            noteInput.value = '';
+        });
+        exportBtn.addEventListener('click', exportNotes);
+
+        // Ctrl+Enter для сохранения
+        noteInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                addNote();
+            }
+        });
+
+        // Инициализация Firebase Authentication
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUserId = user.uid;
+                loadNotes();
+            } else {
+                auth.signInAnonymously()
+                    .then((result) => {
+                        currentUserId = result.user.uid;
+                        loadNotes();
+                    })
+                    .catch((error) => {
+                        console.error('Ошибка аутентификации:', error);
+                        showError(`Ошибка подключения: ${error.message}`);
+                        updateStatus(false);
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
