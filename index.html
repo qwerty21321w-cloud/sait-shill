@@ -215,6 +215,27 @@
             box-shadow: 0 0 10px #ff0000;
         }
 
+        .card-file {
+            background-color: #001a00;
+            border: 1px solid #00ff00;
+            padding: 5px 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+        .card-file a {
+            color: #00ff00;
+            text-decoration: none;
+        }
+
+        .card-file a:hover {
+            text-decoration: underline;
+            text-shadow: 0 0 5px #00ff00;
+        }
+
         /* Empty state */
         .empty-message {
             text-align: center;
@@ -269,6 +290,7 @@
         <div class="add-panel">
             <h2>>>> НОВАЯ ЗАПИСЬ</h2>
             <textarea id="noteInput" placeholder="Введите содержимое заметки..."></textarea>
+            <input id="fileInput" type="file" accept="image/*,.zip" style="width:100%;margin-bottom:15px;padding:10px;background:#001a00;color:#00ff00;border:1px solid #00ff00;" />
             <div class="button-container">
                 <button id="saveBtn">[ СОХРАНИТЬ В ОБЛАКО ]</button>
                 <button id="clearBtn">[ ОЧИСТИТЬ ]</button>
@@ -287,6 +309,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-storage-compat.js"></script>
 
     <script>
         // ✅ КОНФИГУРАЦИЯ FIREBASE
@@ -304,6 +327,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const auth = firebase.auth();
+        const storage = firebase.storage();
 
         // Парсинг User-Agent
         function parseUserAgent() {
@@ -345,6 +369,7 @@
 
         // Переменные
         const noteInput = document.getElementById('noteInput');
+        const fileInput = document.getElementById('fileInput');
         const saveBtn = document.getElementById('saveBtn');
         const clearBtn = document.getElementById('clearBtn');
         const exportBtn = document.getElementById('exportBtn');
@@ -407,16 +432,24 @@
             card.className = 'card';
             
             const noteDate = formatDate(noteData.timestamp);
+            let fileHtml = '';
+            if (noteData.fileUrl) {
+                const fileName = escapeHtml(noteData.fileName || 'Файл');
+                fileHtml = `<div class="card-file"><a href="${noteData.fileUrl}" target="_blank" style="color:#00ff00;text-decoration:none;" title="${fileName}">📥 ${fileName}</a></div>`;
+            }
             
             card.innerHTML = `
-                <div class="card-content">${escapeHtml(noteData.content)}</div>
+                <div class="card-content">${escapeHtml(noteData.content || '')}</div>
                 <div class="card-footer">
                     <div class="card-info-left">
                         <div class="device-icon" title="${noteData.device}">${noteData.deviceIcon}</div>
                         <span>${noteData.browser}</span>
                     </div>
-                    <div class="card-date">${noteDate}</div>
-                    <button class="delete-btn" onclick="deleteNote('${noteId}')">[ X ]</button>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <div class="card-date">${noteDate}</div>
+                        ${fileHtml}
+                        <button class="delete-btn" onclick="deleteNote('${noteId}')" style="margin:0;">[ X ]</button>
+                    </div>
                 </div>
             `;
             
@@ -446,7 +479,7 @@
 
             feed.innerHTML = '<div class="loading">[ ЗАГРУЗКА ДАННЫХ ИЗ ОБЛАКА... ]</div>';
 
-            const notesRef = db.ref(`notes/${currentUserId}`).orderByChild('timestamp');
+            const notesRef = db.ref(`notes_shared`).orderByChild('timestamp');
             notesRef.on('value', (snapshot) => {
                 const notes = [];
                 snapshot.forEach((childSnapshot) => {
@@ -462,12 +495,19 @@
             });
         }
 
+        function uploadFile(file) {
+            const fileRef = storage.ref(`uploads/${Date.now()}_${file.name}`);
+            return fileRef.put(file)
+                .then(snapshot => snapshot.ref.getDownloadURL());
+        }
+
         // Добавление новой заметки
         function addNote() {
             const content = noteInput.value.trim();
+            const file = fileInput.files[0];
             
-            if (content === '') {
-                showError('Пожалуйста, введите содержимое заметки!');
+            if (content === '' && !file) {
+                showError('Пожалуйста, введите заметку или выберите файл.');
                 return;
             }
 
@@ -479,7 +519,7 @@
             saveBtn.disabled = true;
             saveBtn.textContent = '[ СОХРАНЕНИЕ... ]';
 
-            const newNote = {
+            const noteData = {
                 content: content,
                 timestamp: Date.now(),
                 device: ua.device,
@@ -488,18 +528,39 @@
                 userAgent: ua.userAgent
             };
 
-            db.ref(`notes/${currentUserId}`).push(newNote)
-                .then(() => {
-                    noteInput.value = '';
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
-                })
-                .catch((error) => {
-                    console.error('Ошибка сохранения:', error);
-                    showError(`Ошибка сохранения: ${error.message}`);
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
-                });
+            const saveToDb = (data) => {
+                db.ref(`notes_shared`).push(data)
+                    .then(() => {
+                        noteInput.value = '';
+                        fileInput.value = '';
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
+                    })
+                    .catch((error) => {
+                        console.error('Ошибка сохранения:', error);
+                        showError(`Ошибка сохранения: ${error.message}`);
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
+                    });
+            };
+
+            if (file) {
+                uploadFile(file)
+                    .then(url => {
+                        noteData.fileUrl = url;
+                        noteData.fileName = file.name;
+                        noteData.fileType = file.type;
+                        saveToDb(noteData);
+                    })
+                    .catch(error => {
+                        console.error('Ошибка загрузки файла:', error);
+                        showError(`Ошибка загрузки файла: ${error.message}`);
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
+                    });
+            } else {
+                saveToDb(noteData);
+            }
         }
 
         // Удаление заметки
@@ -507,7 +568,7 @@
             if (confirm('[ ПОДТВЕРЖДЕНИЕ ]\n\nВы уверены, что хотите удалить эту запись?')) {
                 if (!currentUserId) return;
 
-                db.ref(`notes/${currentUserId}/${noteId}`).remove()
+                db.ref(`notes_shared/${noteId}`).remove()
                     .catch((error) => {
                         showError(`Ошибка удаления: ${error.message}`);
                     });
@@ -521,7 +582,7 @@
                 return;
             }
 
-            db.ref(`notes/${currentUserId}`).once('value')
+            db.ref(`notes_shared`).once('value')
                 .then((snapshot) => {
                     const notes = [];
                     snapshot.forEach((childSnapshot) => {
