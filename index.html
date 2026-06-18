@@ -1,690 +1,171 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Банк Данных v3.0 ULTIMATE - Firebase</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Чат — Банк Данных</title>
+  <style>
+    :root{--bg:#0b0f14;--panel:#0f1720;--accent:#00d28a;--muted:#98a0ab;--bubble:#11161b;--mine:#063;--their:#1b2330}
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;color:#e6eef6;background:var(--bg);font-family:Inter,Segoe UI,Arial,sans-serif}
+    .app{height:100vh;display:flex;flex-direction:column}
+    .topbar{height:64px;background:linear-gradient(90deg,#0b1015, #0f1720);display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid rgba(255,255,255,0.03)}
+    .brand{font-weight:700;color:var(--accent)}
+    .status{font-size:12px;color:var(--muted)}
 
-        :root {
-            --bg: #000000;
-            --text: #00ff00;
-            --border: #00ff00;
-            --bg-panel: #0a0a0a;
-            --bg-input: #001a00;
-            --shadow: 0 0 10px #00ff00;
-        }
+    .main{flex:1;display:flex;gap:16px;padding:16px}
+    .sidebar{width:280px;background:var(--panel);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:12px}
+    .search{display:flex;gap:8px}
+    .search input{flex:1;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+    .conversations{overflow:auto;flex:1}
+    .conv{padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01);cursor:pointer}
+    .conv .title{font-weight:600}
+    .chat{flex:1;display:flex;flex-direction:column;background:linear-gradient(180deg,#071018,#08131a);border-radius:8px;padding:12px}
 
-        body.theme-light {
-            --bg: #ffffff;
-            --text: #1a1a1a;
-            --border: #333333;
-            --bg-panel: #f5f5f5;
-            --bg-input: #ffffff;
-            --shadow: 0 0 5px rgba(0,0,0,0.1);
-        }
+    .messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+    .bubble{max-width:72%;padding:10px 12px;border-radius:12px;color:#e6eef6;font-size:14px;line-height:1.35}
+    .bubble.their{align-self:flex-start;background:var(--their);border-top-left-radius:4px}
+    .bubble.mine{align-self:flex-end;background:linear-gradient(90deg,#04683b,#033);border-top-right-radius:4px}
+    .meta{font-size:11px;color:var(--muted);margin-top:6px}
 
-        body.theme-blue {
-            --bg: #0a0a1a;
-            --text: #00ccff;
-            --border: #00ccff;
-            --bg-panel: #0a1a2a;
-            --bg-input: #001a3a;
-            --shadow: 0 0 10px #00ccff;
-        }
+    .composer{display:flex;gap:8px;padding:12px;border-top:1px solid rgba(255,255,255,0.03);align-items:center}
+    .composer input[type=text]{flex:1;padding:12px;border-radius:999px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .btn{padding:10px 14px;border-radius:999px;background:var(--accent);color:#012;cursor:pointer;border:none}
+    .file-label{padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);cursor:pointer}
 
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            padding: 20px;
-            line-height: 1.6;
-            min-height: 100vh;
-            transition: all 0.3s;
-        }
-
-        .status.disconnected {
-            background-color: #3a0a0a;
-        }
-
-        /* Панель добавления */
-        .add-panel {
-            border: 2px solid #00ff00;
-            padding: 20px;
-            margin-bottom: 30px;
-            background-color: #0a0a0a;
-        }
-
-        .add-panel h2 {
-            margin-bottom: 15px;
-            font-size: 16px;
-            text-shadow: 0 0 5px #00ff00;
-        }
-
-        textarea {
-            width: 100%;
-            height: 120px;
-            background-color: #001a00;
-            color: #00ff00;
-            border: 1px solid #00ff00;
-            padding: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            resize: vertical;
-            margin-bottom: 15px;
-        }
-
-        textarea:focus {
-            outline: none;
-            box-shadow: 0 0 10px #00ff00;
-        }
-
-        .button-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            background-color: #001a00;
-            color: #00ff00;
-            border: 1px solid #00ff00;
-            padding: 10px 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        button:hover {
-            background-color: #00ff00;
-            color: #000000;
-            box-shadow: 0 0 10px #00ff00;
-        }
-
-        button:active {
-            transform: scale(0.95);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .device-info {
-            border-top: 1px solid #00ff00;
-            padding-top: 15px;
-            margin-top: 15px;
-            font-size: 12px;
-        }
-
-        .device-label {
-            color: #00ff00;
-            margin-bottom: 5px;
-        }
-
-        .device-value {
-            color: #00aa00;
-            word-break: break-all;
-            background-color: #001a00;
-            padding: 8px;
-            margin-top: 5px;
-        }
-
-        /* Feed список */
-        .feed {
-            display: grid;
-            gap: 20px;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        }
-
-        /* Карточка */
-        .card {
-            border: 2px solid #00ff00;
-            padding: 15px;
-            background-color: #0a0a0a;
-            position: relative;
-            transition: all 0.3s;
-        }
-
-        .card:hover {
-            box-shadow: 0 0 15px #00ff00;
-            transform: translateY(-5px);
-        }
-
-        .card-content {
-            margin-bottom: 20px;
-            min-height: 60px;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-            background-color: #001a00;
-            padding: 10px;
-            border: 1px dashed #00ff00;
-        }
-
-        .card-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            font-size: 12px;
-            border-top: 1px solid #00ff00;
-            padding-top: 10px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .card-info-left {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .device-icon {
-            display: inline-flex;
-            width: 20px;
-            height: 20px;
-            border: 1px solid #00ff00;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-        }
-
-        .card-date {
-            color: #00ff00;
-        }
-
-        .delete-btn {
-            background-color: #330000;
-            border-color: #ff0000;
-            color: #ff0000;
-            padding: 5px 10px;
-            font-size: 12px;
-        }
-
-        .delete-btn:hover {
-            background-color: #ff0000;
-            color: #000000;
-            box-shadow: 0 0 10px #ff0000;
-        }
-
-        .card-file {
-            background-color: #001a00;
-            border: 1px solid #00ff00;
-            padding: 5px 8px;
-            font-size: 12px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 200px;
-        }
-
-        .card-file a {
-            color: #00ff00;
-            text-decoration: none;
-        }
-
-        .card-file a:hover {
-            text-decoration: underline;
-            text-shadow: 0 0 5px #00ff00;
-        }
-
-        /* Empty state */
-        .empty-message {
-            text-align: center;
-            padding: 40px;
-            color: #00aa00;
-            font-size: 16px;
-            border: 2px dashed #00ff00;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #00ff00;
-            font-size: 16px;
-        }
-
-        .error {
-            border: 2px solid #ff0000;
-            padding: 15px;
-            margin-bottom: 20px;
-            background-color: #2a0000;
-            color: #ff0000;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .feed {
-                grid-template-columns: 1fr;
-            }
-
-            .container {
-                max-width: 100%;
-            }
-
-            .card-footer {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
-    </style>
+    .small{font-size:12px;color:var(--muted)}
+    .message-file{margin-top:8px;display:block;max-width:220px;border-radius:6px}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>[ БАНК ДАННЫХ v2.0 FIREBASE ]</h1>
-        
-        <div class="status" id="statusIndicator">
-            [ ПОДКЛЮЧЕНИЕ... ]
-        </div>
-
-        <div id="errorContainer"></div>
-
-        <div class="add-panel">
-            <h2>>>> НОВАЯ ЗАПИСЬ</h2>
-            <textarea id="noteInput" placeholder="Введите содержимое заметки..."></textarea>
-            <input id="fileInput" type="file" accept="image/*,.zip" style="width:100%;margin-bottom:15px;padding:10px;background:#001a00;color:#00ff00;border:1px solid #00ff00;" />
-            <div id="uploadProgress" style="display:none;margin-bottom:15px;background:#001a00;border:1px solid #00ff00;padding:10px;">
-                <div style="font-size:12px;margin-bottom:5px;">📤 Загрузка: <span id="progressPercent">0</span>%</div>
-                <div style="width:100%;height:20px;background:#000;border:1px solid #00ff00;position:relative;">
-                    <div id="progressBar" style="height:100%;background:#00ff00;width:0%;transition:width 0.3s;"></div>
-                </div>
-            </div>
-            <div class="button-container">
-                <button id="saveBtn">[ СОХРАНИТЬ В ОБЛАКО ]</button>
-                <button id="clearBtn">[ ОЧИСТИТЬ ]</button>
-                <button id="exportBtn">[ ЭКСПОРТ JSON ]</button>
-            </div>
-            <div class="device-info">
-                <div class="device-label">Текущее устройство:</div>
-                <div class="device-value" id="userAgent"></div>
-            </div>
-        </div>
-
-        <div class="feed" id="feed"></div>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">Банк Данных — Чат</div>
+      <div class="status" id="statusIndicator">[ ПОДКЛЮЧЕНИЕ... ]</div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-storage-compat.js"></script>
+    <div class="main">
+      <div class="sidebar">
+        <div class="search"><input id="searchConv" placeholder="Поиск..."/></div>
+        <div class="conversations" id="conversations"></div>
+        <div class="small">Открыть репозиторий: GitHub Pages</div>
+      </div>
 
-    <script>
-        // ✅ КОНФИГУРАЦИЯ FIREBASE
-        const firebaseConfig = {
-            apiKey: "AIzaSyCszNTU9feb83GToovE3HuHdW9dsn5lYlc",
-            authDomain: "sait-e0d07.firebaseapp.com",
-            databaseURL: "https://sait-e0d07-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "sait-e0d07",
-            storageBucket: "sait-e0d07.appspot.com",
-            messagingSenderId: "166005592540",
-            appId: "1:166005592540:web:c3d4899cc22a6bf29e7f19"
-        };
+      <div style="flex:1;display:flex;flex-direction:column">
+        <div class="chat">
+          <div class="messages" id="messages"></div>
 
-        // Инициализация Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const auth = firebase.auth();
-        const storage = firebase.storage();
+          <div class="composer">
+            <label class="file-label">
+              📎 <input id="fileInput" type="file" style="display:none" />
+            </label>
+            <input id="messageInput" type="text" placeholder="Напишите сообщение... (Ctrl+Enter отправить)" />
+            <button id="sendBtn" class="btn">Отправить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        // Парсинг User-Agent
-        function parseUserAgent() {
-            const ua = navigator.userAgent;
-            
-            let device = 'OTHER';
-            let deviceIcon = '?';
-            
-            if (/Windows/.test(ua)) {
-                device = 'Windows';
-                deviceIcon = 'W';
-            } else if (/Mac/.test(ua) || /iPhone/.test(ua) || /iPad/.test(ua)) {
-                device = 'Apple';
-                deviceIcon = 'A';
-            } else if (/Android/.test(ua)) {
-                device = 'Android';
-                deviceIcon = 'A';
-            } else if (/Linux/.test(ua)) {
-                device = 'Linux';
-                deviceIcon = 'L';
-            }
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-storage-compat.js"></script>
 
-            let browser = 'Unknown';
-            
-            if (/Chrome/.test(ua) && !/Chromium/.test(ua) && !/Edg/.test(ua)) {
-                browser = 'Chrome';
-            } else if (/Safari/.test(ua) && !/Chrome/.test(ua)) {
-                browser = 'Safari';
-            } else if (/Firefox/.test(ua)) {
-                browser = 'Firefox';
-            } else if (/Edg/.test(ua)) {
-                browser = 'Edge';
-            } else if (/Opera|OPR/.test(ua)) {
-                browser = 'Opera';
-            }
+  <script>
+    // Конфиг Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCszNTU9feb83GToovE3HuHdW9dsn5lYlc",
+      authDomain: "sait-e0d07.firebaseapp.com",
+      databaseURL: "https://sait-e0d07-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "sait-e0d07",
+      storageBucket: "sait-e0d07.appspot.com",
+      messagingSenderId: "166005592540",
+      appId: "1:166005592540:web:c3d4899cc22a6bf29e7f19"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+    const storage = firebase.storage();
 
-            return { device, deviceIcon, browser, userAgent: ua };
+    const messagesDiv = document.getElementById('messages');
+    const sendBtn = document.getElementById('sendBtn');
+    const messageInput = document.getElementById('messageInput');
+    const fileInput = document.getElementById('fileInput');
+    const statusIndicator = document.getElementById('statusIndicator');
+
+    let currentUserId = null;
+
+    function updateStatus(connected){
+      statusIndicator.textContent = connected? '[ ✓ ОНЛАЙН ]' : '[ ✗ ОФЛАЙН ]';
+    }
+
+    function formatDate(ts){ const d=new Date(ts); return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}` }
+
+    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]) }
+
+    function renderMessage(msg){
+      const el = document.createElement('div');
+      const mine = msg.userId===currentUserId;
+      el.className = 'bubble '+(mine? 'mine':'their');
+      el.innerHTML = `<div>${escapeHtml(msg.text||'')}</div>`;
+      if(msg.fileUrl){
+        if(/\.(jpe?g|png|gif|webp)$/i.test(msg.fileName||'')){
+          el.innerHTML += `<img src="${msg.fileUrl}" class="message-file"/>`;
+        } else {
+          el.innerHTML += `<a href="${msg.fileUrl}" target="_blank" class="small">📥 ${escapeHtml(msg.fileName||'Файл')}</a>`;
         }
+      }
+      el.innerHTML += `<div class="meta">${escapeHtml(msg.device||'')} • ${formatDate(msg.timestamp)}</div>`;
+      messagesDiv.appendChild(el);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
 
-        // Переменные
-        const noteInput = document.getElementById('noteInput');
-        const fileInput = document.getElementById('fileInput');
-        const saveBtn = document.getElementById('saveBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const exportBtn = document.getElementById('exportBtn');
-        const feed = document.getElementById('feed');
-        const userAgentDiv = document.getElementById('userAgent');
-        const statusIndicator = document.getElementById('statusIndicator');
-        const errorContainer = document.getElementById('errorContainer');
+    function listenMessages(){
+      db.ref('messages').orderByChild('timestamp').limitToLast(200).on('value', snap=>{
+        messagesDiv.innerHTML='';
+        snap.forEach(ch=>{ renderMessage(ch.val()); })
+        updateStatus(true);
+      }, err=>{ console.error(err); updateStatus(false); });
+    }
 
-        const ua = parseUserAgent();
-        userAgentDiv.textContent = ua.userAgent;
+    function uploadFile(file){
+      const ref = storage.ref(`chat_uploads/${Date.now()}_${file.name}`);
+      return new Promise((resolve, reject) => {
+        const uploadTask = ref.put(file);
+        uploadTask.on('state_changed',
+          () => {},
+          (err) => reject(err),
+          () => uploadTask.snapshot.ref.getDownloadURL().then(resolve).catch(reject)
+        );
+      });
+    }
 
-        let currentUserId = null;
-
-        // Обновление статуса подключения
-        function updateStatus(connected) {
-            if (connected) {
-                statusIndicator.className = 'status connected';
-                statusIndicator.textContent = '[ ✓ ОНЛАЙН - СИНХРОНИЗАЦИЯ АКТИВНА ]';
-            } else {
-                statusIndicator.className = 'status disconnected';
-                statusIndicator.textContent = '[ ✗ ОФЛАЙН - ДАННЫЕ НЕ СИНХРОНИЗИРУЮТСЯ ]';
-            }
+    async function sendMessage(){
+      const text = messageInput.value.trim();
+      const file = fileInput.files[0];
+      if(!text && !file) return;
+      sendBtn.disabled=true;
+      const msg = { text, timestamp: Date.now(), userId: currentUserId, device: navigator.userAgent };
+      try{
+        if(file){
+          const url = await uploadFile(file);
+          msg.fileUrl = url; msg.fileName = file.name;
         }
+        db.ref('messages').push(msg);
+        messageInput.value=''; fileInput.value='';
+      }catch(e){ console.error(e); alert('Ошибка отправки: '+e.message) }
+      sendBtn.disabled=false;
+    }
 
-        // Показ ошибок
-        function showError(message) {
-            errorContainer.innerHTML = `<div class="error">[ ОШИБКА ]\n${message}</div>`;
-            setTimeout(() => {
-                errorContainer.innerHTML = '';
-            }, 5000);
-        }
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', e=>{ if(e.ctrlKey&&e.key==='Enter') sendMessage(); });
 
-        // Форматирование даты
-        function formatDate(timestamp) {
-            const d = new Date(timestamp);
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear();
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
-            
-            return `${day}.${month}.${year}, ${hours}:${minutes}`;
-        }
-
-        // Экранирование HTML
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, m => map[m]);
-        }
-
-        // Создание карточки
-        function createCard(noteId, noteData) {
-            const card = document.createElement('div');
-            card.className = 'card';
-            
-            const noteDate = formatDate(noteData.timestamp);
-            let fileHtml = '';
-            if (noteData.fileUrl) {
-                const fileName = escapeHtml(noteData.fileName || 'Файл');
-                fileHtml = `<div class="card-file"><a href="${noteData.fileUrl}" target="_blank" style="color:#00ff00;text-decoration:none;" title="${fileName}">📥 ${fileName}</a></div>`;
-            }
-            
-            card.innerHTML = `
-                <div class="card-content">${escapeHtml(noteData.content || '')}</div>
-                <div class="card-footer">
-                    <div class="card-info-left">
-                        <div class="device-icon" title="${noteData.device}">${noteData.deviceIcon}</div>
-                        <span>${noteData.browser}</span>
-                    </div>
-                    <div style="display:flex;gap:10px;align-items:center;">
-                        <div class="card-date">${noteDate}</div>
-                        ${fileHtml}
-                        <button class="delete-btn" onclick="deleteNote('${noteId}')" style="margin:0;">[ X ]</button>
-                    </div>
-                </div>
-            `;
-            
-            return card;
-        }
-
-        // Отрисовка всех карточек
-        function renderFeed(notes) {
-            feed.innerHTML = '';
-            
-            if (!notes || notes.length === 0) {
-                feed.innerHTML = '<div class="empty-message">[ БАЗА ДАННЫХ ПУСТА ]\n\nДобавьте первую запись чтобы начать...</div>';
-                return;
-            }
-
-            notes.forEach(note => {
-                feed.appendChild(createCard(note.id, note.data));
-            });
-        }
-
-        // Загрузка заметок из Realtime Database
-        function loadNotes() {
-            if (!currentUserId) {
-                feed.innerHTML = '<div class="loading">[ ИНИЦИАЛИЗАЦИЯ... ]</div>';
-                return;
-            }
-
-            feed.innerHTML = '<div class="loading">[ ЗАГРУЗКА ДАННЫХ ИЗ ОБЛАКА... ]</div>';
-
-            const notesRef = db.ref(`notes_shared`).orderByChild('timestamp');
-            notesRef.on('value', (snapshot) => {
-                const notes = [];
-                snapshot.forEach((childSnapshot) => {
-                    notes.push({ id: childSnapshot.key, data: childSnapshot.val() });
-                });
-                notes.reverse();
-                renderFeed(notes);
-                updateStatus(true);
-            }, (error) => {
-                console.error('Ошибка загрузки:', error);
-                showError(`Ошибка загрузки данных: ${error.message}`);
-                updateStatus(false);
-            });
-        }
-
-        function uploadFile(file) {
-            const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-            
-            if (file.size > MAX_FILE_SIZE) {
-                throw new Error(`Файл слишком большой! Максимум 50MB. Ваш файл: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-            }
-
-            const uploadProgress = document.getElementById('uploadProgress');
-            const progressBar = document.getElementById('progressBar');
-            const progressPercent = document.getElementById('progressPercent');
-            
-            uploadProgress.style.display = 'block';
-            
-            const fileRef = storage.ref(`uploads/${Date.now()}_${file.name}`);
-            const uploadTask = fileRef.put(file);
-            
-            // Таймаут 2 минуты
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Загрузка файла заняла слишком много времени. Проверьте интернет и размер файла.')), 120000);
-            });
-            
-            return Promise.race([
-                new Promise((resolve, reject) => {
-                    uploadTask.on('state_changed',
-                        (snapshot) => {
-                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                            progressBar.style.width = progress + '%';
-                            progressPercent.textContent = Math.round(progress);
-                        },
-                        (error) => {
-                            uploadProgress.style.display = 'none';
-                            reject(new Error(`Ошибка загрузки: ${error.message}`));
-                        },
-                        () => {
-                            uploadTask.snapshot.ref.getDownloadURL().then(url => {
-                                uploadProgress.style.display = 'none';
-                                resolve(url);
-                            });
-                        }
-                    );
-                }),
-                timeoutPromise
-            ]);
-        }
-
-        // Добавление новой заметки
-        function addNote() {
-            const content = noteInput.value.trim();
-            const file = fileInput.files[0];
-            
-            if (content === '' && !file) {
-                showError('Пожалуйста, введите заметку или выберите файл.');
-                return;
-            }
-
-            if (!currentUserId) {
-                showError('Пользователь не загружен. Попробуйте перезагрузить страницу.');
-                return;
-            }
-
-            saveBtn.disabled = true;
-            saveBtn.textContent = '[ СОХРАНЕНИЕ... ]';
-
-            const noteData = {
-                content: content,
-                timestamp: Date.now(),
-                device: ua.device,
-                deviceIcon: ua.deviceIcon,
-                browser: ua.browser,
-                userAgent: ua.userAgent
-            };
-
-            const saveToDb = (data) => {
-                db.ref(`notes_shared`).push(data)
-                    .then(() => {
-                        noteInput.value = '';
-                        fileInput.value = '';
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
-                    })
-                    .catch((error) => {
-                        console.error('Ошибка сохранения:', error);
-                        showError(`Ошибка сохранения: ${error.message}`);
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
-                    });
-            };
-
-            if (file) {
-                uploadFile(file)
-                    .then(url => {
-                        noteData.fileUrl = url;
-                        noteData.fileName = file.name;
-                        noteData.fileType = file.type;
-                        saveToDb(noteData);
-                    })
-                    .catch(error => {
-                        console.error('Ошибка загрузки файла:', error);
-                        showError(`Ошибка загрузки файла: ${error.message}`);
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = '[ СОХРАНИТЬ В ОБЛАКО ]';
-                    });
-            } else {
-                saveToDb(noteData);
-            }
-        }
-
-        // Удаление заметки
-        window.deleteNote = function(noteId) {
-            if (confirm('[ ПОДТВЕРЖДЕНИЕ ]\n\nВы уверены, что хотите удалить эту запись?')) {
-                if (!currentUserId) return;
-
-                db.ref(`notes_shared/${noteId}`).remove()
-                    .catch((error) => {
-                        showError(`Ошибка удаления: ${error.message}`);
-                    });
-            }
-        };
-
-        // Экспорт в JSON
-        function exportNotes() {
-            if (!currentUserId) {
-                showError('Пользователь не загружен.');
-                return;
-            }
-
-            db.ref(`notes_shared`).once('value')
-                .then((snapshot) => {
-                    const notes = [];
-                    snapshot.forEach((childSnapshot) => {
-                        notes.push(childSnapshot.val());
-                    });
-
-                    const dataStr = JSON.stringify(notes, null, 2);
-                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                    const url = URL.createObjectURL(dataBlob);
-                    
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `bankdannyh_export_${Date.now()}.json`;
-                    link.click();
-                    
-                    URL.revokeObjectURL(url);
-                })
-                .catch((error) => {
-                    showError(`Ошибка экспорта: ${error.message}`);
-                });
-        }
-
-        // Обработчики событий
-        saveBtn.addEventListener('click', addNote);
-        clearBtn.addEventListener('click', () => {
-            noteInput.value = '';
-            fileInput.value = '';
-            document.getElementById('uploadProgress').style.display = 'none';
-        });
-        exportBtn.addEventListener('click', exportNotes);
-
-        // Ctrl+Enter для сохранения
-        noteInput.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
-                addNote();
-            }
-        });
-
-        // Инициализация Firebase Authentication
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUserId = user.uid;
-                loadNotes();
-            } else {
-                auth.signInAnonymously()
-                    .then((result) => {
-                        currentUserId = result.user.uid;
-                        loadNotes();
-                    })
-                    .catch((error) => {
-                        console.error('Ошибка аутентификации:', error);
-                        showError(`Ошибка подключения: ${error.message}`);
-                        updateStatus(false);
-                    });
-            }
-        });
-    </script>
+    auth.onAuthStateChanged(user=>{
+      if(user){ currentUserId = user.uid; listenMessages(); }
+      else auth.signInAnonymously().catch(err=>console.error(err));
+    });
+  </script>
 </body>
 </html>
