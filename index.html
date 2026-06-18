@@ -109,7 +109,9 @@
       const el = document.createElement('div');
       const mine = msg.userId===currentUserId;
       el.className = 'bubble '+(mine? 'mine':'their');
-      el.innerHTML = `<div>${escapeHtml(msg.text||'')}</div>`;
+      // support old schema: 'content' or new 'text'
+      const text = msg.content || msg.text || '';
+      el.innerHTML = `<div>${escapeHtml(text)}</div>`;
       if(msg.fileUrl){
         if(/\.(jpe?g|png|gif|webp)$/i.test(msg.fileName||'')){
           el.innerHTML += `<img src="${msg.fileUrl}" class="message-file"/>`;
@@ -123,9 +125,22 @@
     }
 
     function listenMessages(){
-      db.ref('messages').orderByChild('timestamp').limitToLast(200).on('value', snap=>{
+      // listen to old/shared path so rules stay compatible with previous setup
+      db.ref('notes_shared').orderByChild('timestamp').limitToLast(200).on('value', snap=>{
         messagesDiv.innerHTML='';
-        snap.forEach(ch=>{ renderMessage(ch.val()); })
+        snap.forEach(ch=>{
+          const v = ch.val();
+          // normalize to message shape
+          const msg = {
+            content: v.content || v.text || '',
+            fileUrl: v.fileUrl || v.url || null,
+            fileName: v.fileName || v.name || '',
+            device: v.device || v.userAgent || '',
+            timestamp: v.timestamp || Date.now(),
+            userId: v.userId || v.uid || v.author || ''
+          };
+          renderMessage(msg);
+        });
         updateStatus(true);
       }, err=>{ console.error(err); updateStatus(false); });
     }
@@ -147,13 +162,14 @@
       const file = fileInput.files[0];
       if(!text && !file) return;
       sendBtn.disabled=true;
-      const msg = { text, timestamp: Date.now(), userId: currentUserId, device: navigator.userAgent };
+      // write in the old/shared schema so server rules accept it
+      const msg = { content: text, timestamp: Date.now(), userId: currentUserId, device: navigator.userAgent };
       try{
         if(file){
           const url = await uploadFile(file);
           msg.fileUrl = url; msg.fileName = file.name;
         }
-        db.ref('messages').push(msg);
+        db.ref('notes_shared').push(msg);
         messageInput.value=''; fileInput.value='';
       }catch(e){ console.error(e); alert('Ошибка отправки: '+e.message) }
       sendBtn.disabled=false;
